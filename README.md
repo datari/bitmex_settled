@@ -1,6 +1,3 @@
-# bitmex_settled
-bitmex settled futures archive
-
 What is this?
 =============
 
