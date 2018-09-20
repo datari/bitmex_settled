@@ -1,0 +1,208 @@
+<!DOCTYPE html>  
+  <meta charset="utf-8">
+  <title>BitMex Settled Contracts</title>
+  <style>
+    body { font: 10px sans-serif; }
+
+    path.candle { stroke: #000000; }
+    path.candle.body { stroke-width: 0; }
+    path.candle.up { fill: #00AA00; stroke: #00AA00; }
+    path.candle.down { fill: #FF0000; stroke: #FF0000; }
+
+
+    path.volume {
+        fill: #AAAAAA;
+        opacity: 0.5;
+    }
+
+    path.volume.up {
+        fill: #00AA00;
+    }
+
+    path.volume.down {
+        fill: #FF0000;
+    }
+
+    .crosshair { cursor: crosshair; }
+    .crosshair path.wire { stroke: #DDDDDD; stroke-dasharray: 1, 1; }
+    .crosshair .axisannotation path { fill: #DDDDDD; }
+  </style>
+  <body>
+    <h1>BitMex Settled Contracts - 2017</h1>
+  <script src="http://d3js.org/d3.v4.min.js"></script>
+  <script src="http://techanjs.org/techan.min.js"></script>
+  <script>
+      var INS = {
+            'xbtz17':{'title':'September - December 2017'},
+            'xbtu17':{'title':'June - September 2017'}, 
+            'xbtm17':{'title':'March - June 2017'},  
+      };
+    for (var i in INS) {
+        console.log(i)
+        addIns(i, INS[i].title);
+    }
+    function addIns(INSTRUMENT, TITLE) {
+    var TF = 'day';
+    var margin = {top: 20, right: 50, bottom: 30, left: 50},
+            width = 1024 - margin.left - margin.right,
+            height = 768 - margin.top - margin.bottom;   
+
+    var parseDate = d3.timeParse("%Y-%m-%d %H:%M:%S");
+
+    var x = techan.scale.financetime()
+            .range([0, width]);
+
+    var y = d3.scaleLinear()
+            .range([height, 0]);
+
+    var yVolume = d3.scaleLinear()
+               .range([height, 0.7*height]);
+
+    var candlestick = techan.plot.candlestick()
+            .xScale(x)
+            .yScale(y);
+
+   var volume = techan.plot.volume()
+            .accessor(techan.accessor.ohlc())   // For volume bar highlighting
+            .xScale(x)
+            .yScale(yVolume);
+
+    var xAxis = d3.axisBottom(x);
+
+    var xTopAxis = d3.axisTop(x);
+
+    var yAxis = d3.axisLeft(y);
+
+    var yRightAxis = d3.axisRight(y);
+
+    var volumeAxis = d3.axisRight(yVolume)
+                        .ticks(2)
+                        .tickFormat(d3.format(",.3s"));
+
+    var ohlcAnnotation = techan.plot.axisannotation()
+            .axis(yAxis)
+            .orient('left')
+            .format(d3.format(',.4f'));
+
+    var ohlcRightAnnotation = techan.plot.axisannotation()
+            .axis(yRightAxis)
+            .orient('right')
+            .translate([width, 0]);
+
+    var timeAnnotation = techan.plot.axisannotation()
+            .axis(xAxis)
+            .orient('bottom')
+            .format(d3.timeFormat('%Y-%m-%d %H:%M'))
+            .width(90)
+            .translate([0, height]);
+
+    var timeTopAnnotation = techan.plot.axisannotation()
+            .axis(xTopAxis)
+            .orient('top')
+            .format(d3.timeFormat('%Y-%m-%d %H:%M'))
+            .width(90);
+
+    var crosshair = techan.plot.crosshair()
+            .xScale(x)
+            .yScale(y)
+            .xAnnotation([timeAnnotation, timeTopAnnotation])
+            .yAnnotation([ohlcAnnotation, ohlcRightAnnotation])
+            .on("enter", enter)
+            .on("out", out)
+            .on("move", move);
+
+    d3.select("body").append("h2").text(INSTRUMENT+' - '+ TITLE);
+    var svg = d3.select("body").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    var coordsText = svg.append('text')
+            .style("text-anchor", "end")
+            .attr("class", "coords")
+            .attr("x", width - 5)
+            .attr("y", 15);
+
+           svg.append("g")
+                        .attr("class", "volume")
+                        .attr("clip-path", "url(#clip)");
+
+
+    d3.csv('data/'+ INSTRUMENT+"_candles/"+TF+".csv", function(error, data) {
+        var accessor = candlestick.accessor();
+
+        //data = data.slice(0,24*7).map(function(d) {
+        data = data.map(function(d) {
+            return {
+                date: parseDate(d.dt),
+                open: +d.o,
+                high: +d.h,
+                low: +d.l,
+                close: +d.c,
+                volume: +d.vol/1000000
+            };
+        }).sort(function(a, b) { return d3.ascending(accessor.d(a), accessor.d(b)); });
+
+        x.domain(data.map(accessor.d));
+        y.domain(techan.scale.plot.ohlc(data, accessor).domain());
+        yVolume.domain(techan.scale.plot.volume(data, accessor.v).domain());
+        svg.select("g.volume").datum(data).call(volume);
+
+        svg.append("g")
+                .datum(data)
+                .attr("class", "candlestick")
+                .call(candlestick);
+
+        svg.append("g").attr("class", "volume");
+
+        svg.append("g")
+                .attr("class", "x axis")
+                .call(xTopAxis);
+
+        svg.append("g")
+                .attr("class", "x axis")
+                .attr("transform", "translate(0," + height + ")")
+                .call(xAxis);
+
+        svg.append("g")
+                .attr("class", "y axis")
+                .call(yAxis);
+
+        svg.append("g")
+                .attr("class", "y axis")
+                .attr("transform", "translate(" + width + ",0)")
+                .call(yRightAxis);
+
+        svg.append('g')
+                .attr("class", "crosshair")
+                .datum({ x: x.domain()[10], y: 1.104 })
+                .call(crosshair)
+                .each(function(d) { move(d); }); // Display the current data
+
+        svg.append('text')
+                .attr("x", 5)
+                .attr("y", 15)
+                .text(INSTRUMENT+" ("+TF+")");
+    });
+
+    function enter() {
+        coordsText.style("display", "inline");
+    }
+
+    function out() {
+        coordsText.style("display", "none");
+    }
+
+    function move(coords) {
+        coordsText.text(
+            timeAnnotation.format()(coords.x) + ", " + ohlcAnnotation.format()(coords.y)
+        );
+    }
+    }
+    </script>
+
+    <footer style="text-align:center; color:#aaa">Made by @data.atari, special for CTTV.  </footer>
+  </body>
+</html>  
+
