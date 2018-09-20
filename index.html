@@ -23,6 +23,7 @@
         fill: #FF0000;
     }
 
+    .center { text-align:center; margin-top:60px } 
     .crosshair { cursor: crosshair; }
     .crosshair path.wire { stroke: #DDDDDD; stroke-dasharray: 1, 1; }
     .crosshair .axisannotation path { fill: #DDDDDD; }
@@ -111,7 +112,7 @@
             .on("out", out)
             .on("move", move);
 
-    d3.select("body").append("h2").text(INSTRUMENT+' - '+ TITLE);
+    d3.select("body").append("h2").text(INSTRUMENT.toUpperCase()+':  '+ TITLE).attr("class", "center");
     var svg = d3.select("body").append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
