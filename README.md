@@ -8,7 +8,7 @@ I could not find any public data on tradingview or anywhere else so I've downloa
 Demo
 ====
 
-You can check all the chart at:
+You can check all the charts at:
 https://datari.github.io/bitmex_settled/
 
 
